@@ -1,0 +1,78 @@
+---
+title: "UTS Data Mining dan Knowledge Management"
+author: "Yoga Cahya Putra (221810662/3SD1)"
+date: "10/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, warning=FALSE}
+library(party)
+library(psych)
+library(caret)
+library(MLmetrics)
+
+```
+
+### Baca Data
+Data tersimpan di folder `dataset`
+```{r}
+flag <- read.csv("C:/Users/hana safitri/Downloads/flag.data", header=FALSE, stringsAsFactors=TRUE)
+head(flag)
+str(flag)
+```
+Deskripsi data car bisa diliat di file car_info_var, V7 merupakan target class yaitu car acceptance
+
+
+### Split Data
+Memecah data menjadi data training (80% dari data awal) dan data test (20% dari data awal)
+```{r}
+set.seed(1234)
+sampel <- sample(2,nrow(flag),replace = T, prob = c(0.8,0.2))
+traindat <- flag[sampel==1, ]
+testdat <- flag[sampel==2, ]
+print(paste("Jumlah train data :", nrow(traindat)))
+print(paste("Jumlah test data :", nrow(testdat)))
+head(traindat)
+```
+### Membuat Model
+Misal kita ingin menggunakan semua atributnya
+```{r}
+pohon <- ctree(V6~., data=traindat)
+plot(pohon)
+```
+
+
+Jika dirasa cukup berantakan, filter tampilan tree dengan cuma nampilin variabel atau banyak observasi tertentu, ini dinamakan **pruning tree**
+```{r}
+pohondahdifilter <- ctree(V7~V1+V2+V6, data=trainingdat, 
+                          controls = ctree_control(mincriterion = 0.99, minsplit = 300))
+plot(pohondahdifilter)
+```
+*mincriterion* artinya kita mecah node apabila, dengan taraf signifikansi 99 persen, variabel tersebut signifikan. makin tinggi mincriterion makin sederhana pohonnya.
+*minsplit* artinya pohonnya bakal bercabang kalo observasi dari node tersebut minimal 300 biji. makin besar minsplitnya, makin sederhana pohonnya.
+
+
+### Model Evaluation
+#### Sebelum dilakukan prunning
+```{r}
+prediksi <- predict(pohon, testdat)
+prediksi
+CM<-table(testdat[,6], prediksi)
+CM
+
+confusionMatrix(table(prediksi,testdat$V6))
+```
+
+#### Setelah dilakukan prunning
+```{r}
+prediksi2 <- predict(pohondahdifilter, testingdat)
+
+confusionMatrix(table(prediksi2, testingdat$V7))
+F1_Score(y_pred = pohondahdifilter$V7, y_true = car$V7,positive = "acc")
+```
+
+Terlihat bahwa dari akurasi kedua model, pohon yang disederhanakan memiliki akurasi yang lebih rendah daripada pohon yang tidak disederhanakan.
